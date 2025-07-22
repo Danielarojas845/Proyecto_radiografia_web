@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Clasificación de Radiografías</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding-top: 50px;
+        }
+        #logo {
+            width: 60px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        #upload-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #preview {
+            margin-top: 20px;
+            max-width: 256px;
+            display: none;
+        }
+        #loading {
+            display: none;
+            margin-top: 10px;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        button {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo principal -->
+    <img id="logo" src="static/logo.png" alt="Logo Salud AI">
+
+    <h1>Subir radiografía para diagnóstico</h1>
+
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" name="file" id="file-input" accept="image/*" required><br><br>
+        <img id="preview" src="#" alt="Vista previa"><br>
+        <button type="submit">Predecir</button>
+        <div id="loading">🔄 Analizando imagen...</div>
+        <div id="result"></div>
+        <button type="button" id="download-btn" style="display:none;">Descargar resultado en PDF</button>
+    </form>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        const form = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const preview = document.getElementById('preview');
+        const resultDiv = document.getElementById('result');
+        const loading = document.getElementById('loading');
+        const downloadBtn = document.getElementById('download-btn');
+
+        // Vista previa de imagen
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            }
+        });
+
+        // Evento de predicción
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            resultDiv.innerHTML = "";
+            loading.style.display = 'block';
+            downloadBtn.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <strong>Diagnóstico:</strong> ${data.predicted_class}<br>
+                        <strong>Probabilidad:</strong> ${data.probability}
+                    `;
+                    downloadBtn.style.display = 'inline-block';
+
+                    window.resultadoData = {
+                        diagnostico: data.predicted_class,
+                        probabilidad: data.probability
+                    };
+                } else {
+                    resultDiv.innerHTML = `<span style="color:red;">Error: ${data.error}</span>`;
+                }
+            } catch (err) {
+                loading.style.display = 'none';
+                resultDiv.innerHTML = `<span style="color:red;">Error: ${err.message}</span>`;
+            }
+        });
+
+        // PDF
+        downloadBtn.addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const fileName = fileInput.files[0]?.name || "Radiografía";
+
+            doc.setFontSize(16);
+            doc.text("Reporte de Diagnóstico", 20, 20);
+            doc.setFontSize(12);
+            doc.text(`Archivo: ${fileName}`, 20, 35);
+            doc.text(`Diagnóstico: ${resultadoData.diagnostico}`, 20, 45);
+            doc.text(`Probabilidad: ${resultadoData.probabilidad}`, 20, 55);
+            doc.text(`Fecha: ${new Date().toLocaleString()}`, 20, 65);
+
+            doc.save("resultado_radiografia.pdf");
+        });
+    </script>
+</body>
+</html>
