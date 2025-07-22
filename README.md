@@ -7,7 +7,8 @@ Este proyecto implementa una red neuronal convolucional (CNN) usando Keras y Fla
 ## 🔧 Tecnologías utilizadas
 
 - Python  
-- TensorFlow / Keras  
+- TensorFlow / Keras
+- flask-cors
 - Flask (API)  
 - NumPy, Pillow  
 - Google Colab (entrenamiento)  
